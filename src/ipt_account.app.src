@@ -1,0 +1,9 @@
+{application, ipt_account, [
+    {description, "ipt_ACCOUNT wrapper"},
+    {vsn, "0.1"},
+    {modules, []},
+    {registered, []},
+    {applications, [kernel, stdlib, lager, gen_socket]},
+    {env, []}
+]}.
+
