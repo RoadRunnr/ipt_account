@@ -60,6 +60,9 @@ init(Opts) ->
 deinit(#ipt_context{socket = Socket}) ->
     gen_socket:close(Socket).
 
+round_up(Value, Block) ->
+    ((Value + Block - 1) div Block) * Block.
+
 read_entries(Name, Flush, #ipt_context{socket = Socket})
   when (is_binary(Name) orelse is_list(Name))
        andalso is_boolean(Flush) ->
@@ -72,7 +75,8 @@ read_entries(Name, Flush, #ipt_context{socket = Socket})
 	Handle1 when is_binary(Handle1) ->
 	    Ret = case handle_sockopt(Handle1) of
 		      {_, _, Count} when Count > 0 ->
-			  OptLen = max(?IPT_ACC_HANDLE_SOCKOPT_LEN, Count * 20),
+			  %% BufferSize is (Count + 10%) * 20 rounded up the next multiple of IPT_ACCOUNT_MIN_BUFSIZE
+			  OptLen = max(?IPT_ACCOUNT_MIN_BUFSIZE, round_up((Count + Count div 10) * 20, ?IPT_ACCOUNT_MIN_BUFSIZE)),
 			  case gen_socket:getsockopt(Socket, ip, ?IPT_SO_GET_ACCOUNT_GET_DATA, Handle1, OptLen) of
 			      Data when is_binary(Data) ->
 				  split_accounting(Data, Count, []);
