@@ -44,6 +44,7 @@
 -define(IPT_ACCOUNT_MIN_BUFSIZE, 4096).
 -define(ACCOUNT_TABLE_NAME_LEN, 32).
 -define(IPT_ACC_HANDLE_SOCKOPT_LEN, ?ACCOUNT_TABLE_NAME_LEN + 8).
+-define(IPT_ACC_IP_LEN, 40).
 
 %% ====================================================================
 %% API
@@ -75,8 +76,8 @@ read_entries(Name, Flush, #ipt_context{socket = Socket})
 	Handle1 when is_binary(Handle1) ->
 	    Ret = case handle_sockopt(Handle1) of
 		      {_, _, Count} when Count > 0 ->
-			  %% BufferSize is (Count + 10%) * 20 rounded up the next multiple of IPT_ACCOUNT_MIN_BUFSIZE
-			  OptLen = max(?IPT_ACCOUNT_MIN_BUFSIZE, round_up((Count + Count div 10) * 20, ?IPT_ACCOUNT_MIN_BUFSIZE)),
+			  %% BufferSize is (Count + 10%) * ?IPT_ACC_IP_LEN rounded up the next multiple of IPT_ACCOUNT_MIN_BUFSIZE
+			  OptLen = max(?IPT_ACCOUNT_MIN_BUFSIZE, round_up((Count + Count div 10) * ?IPT_ACC_IP_LEN, ?IPT_ACCOUNT_MIN_BUFSIZE)),
 			  case gen_socket:getsockopt(Socket, ip, ?IPT_SO_GET_ACCOUNT_GET_DATA, Handle1, OptLen) of
 			      Data when is_binary(Data) ->
 				  split_accounting(Data, Count, []);
@@ -153,7 +154,7 @@ handle_sockopt(<<Nr:32/native-integer, BinName:?ACCOUNT_TABLE_NAME_LEN/binary, C
 
 split_accounting(_Data, 0, Acc) ->
     lists:reverse(Acc);
-split_accounting(<<D:8, C:8, B:8, A:8,
-		   SrcPackets:32/native-integer, SrcBytes:32/native-integer,
-		   DstPackets:32/native-integer, DstBytes:32/native-integer, Rest/binary>>, Cnt, Acc) ->
+split_accounting(<<D:8, C:8, B:8, A:8, _:32,
+		   SrcPackets:64/native-integer, SrcBytes:64/native-integer,
+		   DstPackets:64/native-integer, DstBytes:64/native-integer, Rest/binary>>, Cnt, Acc) ->
     split_accounting(Rest, Cnt - 1, [{{A,B,C,D}, {SrcPackets, SrcBytes}, {DstPackets, DstBytes}}|Acc]).
